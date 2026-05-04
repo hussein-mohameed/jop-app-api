@@ -1,0 +1,937 @@
+// HR Management System — Prisma Schema
+// Database: PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  EMPLOYEE
+  MANAGER
+  HR_STAFF
+  HR_MANAGER
+  COMPANY_ADMIN
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  TERMINATED
+  PROBATION
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum SalaryComponentType {
+  ALLOWANCE
+  DEDUCTION
+  BONUS
+  TAX
+}
+
+enum PayrollStatus {
+  DRAFT
+  PROCESSING
+  COMPLETED
+  PAID
+}
+
+enum JobStatus {
+  DRAFT
+  PENDING_APPROVAL
+  PUBLISHED
+  CLOSED
+  CANCELLED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  REMOTE
+}
+
+enum ApplicationStatus {
+  RECEIVED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  OFFERED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  VIEW
+  EXPORT
+}
+
+// ==================== ATTENDANCE ENUMS ====================
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  ON_LEAVE
+  REMOTE
+}
+
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  NIGHT
+  FLEXIBLE
+  SPLIT
+}
+
+enum CheckInMethod {
+  WEB
+  MOBILE_GPS
+  QR_CODE
+  BADGE
+  BIOMETRIC
+  IP_BASED
+}
+
+// ==================== PERFORMANCE ENUMS ====================
+
+enum ReviewCycleStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ReviewStatus {
+  NOT_STARTED
+  SELF_REVIEW
+  PEER_REVIEW
+  MANAGER_REVIEW
+  CALIBRATION
+  REVIEW_COMPLETED
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RatingScale {
+  EXCEEDS_EXPECTATIONS
+  MEETS_EXPECTATIONS
+  NEEDS_IMPROVEMENT
+  UNSATISFACTORY
+}
+
+enum FeedbackType {
+  SELF
+  PEER
+  MANAGER
+  SKIP_LEVEL
+}
+
+enum OvertimeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ==================== SESSION & DISCIPLINE ENUMS ====================
+
+enum WorkSessionStatus {
+  ACTIVE
+  ON_BREAK
+  COMPLETED
+}
+
+enum BreakPolicyMode {
+  FIXED
+  FLEXIBLE
+  NONE
+}
+
+enum BreakType {
+  REST
+  LUNCH
+  PRAYER
+  PERSONAL
+  OTHER
+}
+
+enum WarningStatus {
+  ACTIVE
+  EXPIRED
+  APPEALED
+  REVOKED
+}
+
+// ==================== MODELS ====================
+
+/// User account for authentication and base identity
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         UserRole @default(EMPLOYEE)
+  avatarUrl    String?  @map("avatar_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  employee              Employee?
+  managedDepartments    Department[]        @relation("DepartmentManager")
+  employeeRequests      EmployeeRequest[]   @relation("RequestedBy")
+  reviewedRequests      EmployeeRequest[]   @relation("ReviewedBy")
+  leaves                Leave[]             @relation("EmployeeLeaves")
+  approvedLeaves        Leave[]             @relation("LeaveApprover")
+  suggestedBonuses      Bonus[]             @relation("BonusSuggestor")
+  approvedBonuses       Bonus[]             @relation("BonusApprover")
+  postedJobs            Job[]               @relation("JobPoster")
+  approvedJobs          Job[]               @relation("JobApprover")
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  reviewedApplications  JobApplication[]    @relation("ApplicationReviewer")
+  issuedWarnings        EmployeeWarning[]   @relation("WarningIssuer")
+
+  @@map("users")
+}
+
+/// Employee details extending User with employment information
+model Employee {
+  id                     String           @id @default(cuid())
+  userId                 String           @unique @map("user_id")
+  employeeId             String           @unique @map("employee_id")
+  phone                  String?
+  dateOfBirth            DateTime?        @map("date_of_birth")
+  gender                 Gender?
+  nationalId             String?          @map("national_id")
+  address                String?
+  departmentId           String           @map("department_id")
+  position               String
+  employmentType         EmploymentType   @default(FULL_TIME) @map("employment_type")
+  employmentStatus       EmploymentStatus @default(ACTIVE) @map("employment_status")
+  hireDate               DateTime         @map("hire_date")
+  terminationDate        DateTime?        @map("termination_date")
+  managerId              String?          @map("manager_id")
+  hasJobPostingPermission Boolean         @default(false) @map("has_job_posting_permission")
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department     Department      @relation(fields: [departmentId], references: [id])
+  manager        Employee?       @relation("EmployeeManager", fields: [managerId], references: [id])
+  subordinates   Employee[]      @relation("EmployeeManager")
+  salaries           Salary[]
+  leaveBalances      LeaveBalance[]
+  payslips           Payslip[]
+  attendanceRecords  AttendanceRecord[]
+  shiftAssignments   ShiftAssignment[]
+  overtimeRequests   OvertimeRequest[]
+  performanceReviews PerformanceReview[]
+  reviewGoals        ReviewGoal[]
+  reviewFeedbackGiven    ReviewFeedback[] @relation("FeedbackReviewer")
+  reviewFeedbackReceived ReviewFeedback[] @relation("FeedbackSubject")
+  improvementPlans   ImprovementPlan[]
+  workSessions       WorkSession[]
+  warnings           EmployeeWarning[]
+
+  @@index([departmentId])
+  @@index([managerId])
+  @@index([employmentStatus])
+  @@map("employees")
+}
+
+/// Company department
+model Department {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  code          String    @unique
+  description   String?
+  managerId     String?   @map("manager_id")
+  parentId      String?   @map("parent_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  manager    User?        @relation("DepartmentManager", fields: [managerId], references: [id])
+  parent     Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children   Department[] @relation("DepartmentHierarchy")
+  employees  Employee[]
+  jobs       Job[]
+  breakPolicy DepartmentBreakPolicy?
+
+  @@index([managerId])
+  @@map("departments")
+}
+
+/// Employee creation request (approval workflow)
+model EmployeeRequest {
+  id             String         @id @default(cuid())
+  requestedById  String         @map("requested_by_id")
+  employeeData   Json           @map("employee_data")
+  status         ApprovalStatus @default(PENDING)
+  reviewedById   String?        @map("reviewed_by_id")
+  reviewedAt     DateTime?      @map("reviewed_at")
+  reviewNotes    String?        @map("review_notes")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  requestedBy User  @relation("RequestedBy", fields: [requestedById], references: [id])
+  reviewedBy  User? @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([status])
+  @@index([requestedById])
+  @@map("employee_requests")
+}
+
+/// Leave type definition (Annual, Sick, Personal, etc.)
+model LeaveType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  code        String   @unique
+  description String?
+  defaultDays Int      @map("default_days")
+  isPaid      Boolean  @default(true) @map("is_paid")
+  isActive    Boolean  @default(true) @map("is_active")
+  color       String   @default("#3b82f6")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  leaves        Leave[]
+  leaveBalances LeaveBalance[]
+
+  @@map("leave_types")
+}
+
+/// Leave request
+model Leave {
+  id            String         @id @default(cuid())
+  employeeId    String         @map("employee_id")
+  leaveTypeId   String         @map("leave_type_id")
+  startDate     DateTime       @map("start_date")
+  endDate       DateTime       @map("end_date")
+  totalDays     Int            @map("total_days")
+  reason        String
+  status        ApprovalStatus @default(PENDING)
+  approvedById  String?        @map("approved_by_id")
+  approvedAt    DateTime?      @map("approved_at")
+  approvalNotes String?        @map("approval_notes")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  employee   User      @relation("EmployeeLeaves", fields: [employeeId], references: [id])
+  leaveType  LeaveType @relation(fields: [leaveTypeId], references: [id])
+  approvedBy User?     @relation("LeaveApprover", fields: [approvedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("leaves")
+}
+
+/// Leave balance per employee per leave type per year
+model LeaveBalance {
+  id           String   @id @default(cuid())
+  employeeId   String   @map("employee_id")
+  leaveTypeId  String   @map("leave_type_id")
+  year         Int
+  totalDays    Int      @map("total_days")
+  usedDays     Int      @default(0) @map("used_days")
+  pendingDays  Int      @default(0) @map("pending_days")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@map("leave_balances")
+}
+
+/// Salary record for an employee
+model Salary {
+  id            String    @id @default(cuid())
+  employeeId    String    @map("employee_id")
+  baseSalary    Float     @map("base_salary")
+  effectiveDate DateTime  @map("effective_date")
+  endDate       DateTime? @map("end_date")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  employee   Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  components SalaryComponent[]
+
+  @@index([employeeId])
+  @@index([isActive])
+  @@map("salaries")
+}
+
+/// Salary component (allowance, deduction, etc.)
+model SalaryComponent {
+  id           String              @id @default(cuid())
+  salaryId     String              @map("salary_id")
+  name         String
+  type         SalaryComponentType
+  amount       Float
+  isPercentage Boolean             @default(false) @map("is_percentage")
+  description  String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  salary Salary @relation(fields: [salaryId], references: [id], onDelete: Cascade)
+
+  @@map("salary_components")
+}
+
+/// Monthly payslip
+model Payslip {
+  id              String    @id @default(cuid())
+  employeeId      String    @map("employee_id")
+  month           Int
+  year            Int
+  baseSalary      Float     @map("base_salary")
+  totalAllowances Float     @default(0) @map("total_allowances")
+  totalDeductions Float     @default(0) @map("total_deductions")
+  totalBonuses    Float     @default(0) @map("total_bonuses")
+  grossPay        Float     @map("gross_pay")
+  netPay          Float     @map("net_pay")
+  isPaid          Boolean   @default(false) @map("is_paid")
+  paidAt          DateTime? @map("paid_at")
+  components      Json      @default("[]")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, month, year])
+  @@index([month, year])
+  @@map("payslips")
+}
+
+/// Bonus suggestion and approval
+model Bonus {
+  id                  String         @id @default(cuid())
+  employeeId          String         @map("employee_id")
+  amount              Float
+  reason              String
+  status              ApprovalStatus @default(PENDING)
+  suggestedById       String         @map("suggested_by_id")
+  approvedById        String?        @map("approved_by_id")
+  approvedAt          DateTime?      @map("approved_at")
+  approvalNotes       String?        @map("approval_notes")
+  payrollMonth        Int?           @map("payroll_month")
+  payrollYear         Int?           @map("payroll_year")
+  isIncludedInPayroll Boolean        @default(false) @map("is_included_in_payroll")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  suggestedBy User @relation("BonusSuggestor", fields: [suggestedById], references: [id])
+  approvedBy  User? @relation("BonusApprover", fields: [approvedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("bonuses")
+}
+
+/// Job posting
+model Job {
+  id               String    @id @default(cuid())
+  title            String
+  description      String
+  departmentId     String    @map("department_id")
+  location         String
+  jobType          JobType   @map("job_type")
+  salaryMin        Float?    @map("salary_min")
+  salaryMax        Float?    @map("salary_max")
+  requirements     Json      @default("[]")
+  responsibilities Json      @default("[]")
+  benefits         Json      @default("[]")
+  status           JobStatus @default(DRAFT)
+  postedById       String    @map("posted_by_id")
+  approvedById     String?   @map("approved_by_id")
+  publishedAt      DateTime? @map("published_at")
+  closingDate      DateTime? @map("closing_date")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  department   Department       @relation(fields: [departmentId], references: [id])
+  postedBy     User             @relation("JobPoster", fields: [postedById], references: [id])
+  approvedBy   User?            @relation("JobApprover", fields: [approvedById], references: [id])
+  applications JobApplication[]
+
+  @@index([status])
+  @@index([departmentId])
+  @@map("jobs")
+}
+
+/// Job application from external candidates
+model JobApplication {
+  id             String            @id @default(cuid())
+  jobId          String            @map("job_id")
+  applicantName  String            @map("applicant_name")
+  applicantEmail String            @map("applicant_email")
+  applicantPhone String?           @map("applicant_phone")
+  resumeUrl      String?           @map("resume_url")
+  coverLetter    String?           @map("cover_letter")
+  status         ApplicationStatus @default(RECEIVED)
+  notes          String?
+  reviewedById   String?           @map("reviewed_by_id")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  job        Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+
+  @@index([jobId])
+  @@index([status])
+  @@map("job_applications")
+}
+
+/// In-app notification
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  link      String?
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+/// Security audit log
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String?     @map("user_id")
+  action    AuditAction
+  entity    String
+  entityId  String?     @map("entity_id")
+  metadata  Json?
+  ipAddress String?     @map("ip_address")
+  userAgent String?     @map("user_agent")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ==================== ATTENDANCE MODELS ====================
+
+/// Daily attendance record
+model AttendanceRecord {
+  id           String           @id @default(cuid())
+  employeeId   String           @map("employee_id")
+  date         DateTime
+  checkIn      DateTime?        @map("check_in")
+  checkOut     DateTime?        @map("check_out")
+  status       AttendanceStatus @default(PRESENT)
+  method       CheckInMethod    @default(WEB)
+  ipAddress    String?          @map("ip_address")
+  latitude     Float?
+  longitude    Float?
+  notes        String?
+  workHours    Float?           @map("work_hours")
+  isOvertime   Boolean          @default(false) @map("is_overtime")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([status])
+  @@map("attendance_records")
+}
+
+/// Shift definition
+model Shift {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  type        ShiftType
+  startTime   String    @map("start_time")    // HH:mm format
+  endTime     String    @map("end_time")      // HH:mm format
+  breakMinutes Int      @default(60) @map("break_minutes")
+  isActive    Boolean   @default(true) @map("is_active")
+  color       String    @default("#3b82f6")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  assignments ShiftAssignment[]
+
+  @@map("shifts")
+}
+
+/// Employee ↔ Shift mapping
+model ShiftAssignment {
+  id          String   @id @default(cuid())
+  employeeId  String   @map("employee_id")
+  shiftId     String   @map("shift_id")
+  startDate   DateTime @map("start_date")
+  endDate     DateTime? @map("end_date")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift    Shift    @relation(fields: [shiftId], references: [id])
+
+  @@index([employeeId])
+  @@index([shiftId])
+  @@map("shift_assignments")
+}
+
+/// Overtime request
+model OvertimeRequest {
+  id            String         @id @default(cuid())
+  employeeId    String         @map("employee_id")
+  date          DateTime
+  hours         Float
+  reason        String
+  status        OvertimeStatus @default(PENDING)
+  approvedById  String?        @map("approved_by_id")
+  approvedAt    DateTime?      @map("approved_at")
+  multiplier    Float          @default(1.5)   // 1.5x or 2x rate
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("overtime_requests")
+}
+
+/// Attendance policy configuration
+model AttendancePolicy {
+  id               String  @id @default(cuid())
+  name             String  @unique
+  lateThresholdMin Int     @default(15) @map("late_threshold_min") // Minutes after shift start
+  graceMinutes     Int     @default(5) @map("grace_minutes")
+  halfDayHours     Float   @default(4) @map("half_day_hours")
+  fullDayHours     Float   @default(8) @map("full_day_hours")
+  overtimeAfterMin Int     @default(480) @map("overtime_after_min") // 8 hours = 480 min
+  isDefault        Boolean @default(false) @map("is_default")
+  isActive         Boolean @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("attendance_policies")
+}
+
+// ==================== PERFORMANCE MODELS ====================
+
+/// Performance review cycle (annual, quarterly, etc.)
+model PerformanceReviewCycle {
+  id          String            @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime          @map("start_date")
+  endDate     DateTime          @map("end_date")
+  status      ReviewCycleStatus @default(DRAFT)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  reviews PerformanceReview[]
+
+  @@map("performance_review_cycles")
+}
+
+/// Individual performance review
+model PerformanceReview {
+  id              String        @id @default(cuid())
+  cycleId         String        @map("cycle_id")
+  employeeId      String        @map("employee_id")
+  status          ReviewStatus  @default(NOT_STARTED)
+  overallRating   RatingScale?  @map("overall_rating")
+  managerComments String?       @map("manager_comments")
+  employeeComments String?      @map("employee_comments")
+  completedAt     DateTime?     @map("completed_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  cycle    PerformanceReviewCycle @relation(fields: [cycleId], references: [id])
+  employee Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  goals    ReviewGoal[]
+  feedback ReviewFeedback[]
+
+  @@unique([cycleId, employeeId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("performance_reviews")
+}
+
+/// Goals / KPIs / OKRs per review
+model ReviewGoal {
+  id          String     @id @default(cuid())
+  reviewId    String     @map("review_id")
+  employeeId  String     @map("employee_id")
+  title       String
+  description String?
+  weight      Float      @default(1.0)
+  status      GoalStatus @default(NOT_STARTED)
+  progress    Int        @default(0)          // 0-100%
+  dueDate     DateTime?  @map("due_date")
+  completedAt DateTime?  @map("completed_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  review   PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_goals")
+}
+
+/// 360° feedback entry
+model ReviewFeedback {
+  id          String       @id @default(cuid())
+  reviewId    String       @map("review_id")
+  reviewerId  String       @map("reviewer_id")
+  subjectId   String       @map("subject_id")
+  type        FeedbackType
+  rating      RatingScale?
+  strengths   String?
+  improvements String?
+  comments    String?
+  isAnonymous Boolean      @default(false) @map("is_anonymous")
+  submittedAt DateTime?    @map("submitted_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  review   PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewer Employee          @relation("FeedbackReviewer", fields: [reviewerId], references: [id])
+  subject  Employee          @relation("FeedbackSubject", fields: [subjectId], references: [id])
+
+  @@index([reviewId])
+  @@index([reviewerId])
+  @@map("review_feedback")
+}
+
+/// Performance Improvement Plan (PIP)
+model ImprovementPlan {
+  id            String     @id @default(cuid())
+  employeeId    String     @map("employee_id")
+  title         String
+  reason        String
+  startDate     DateTime   @map("start_date")
+  endDate       DateTime   @map("end_date")
+  milestones    Json       @default("[]")   // Array of milestone objects
+  status        GoalStatus @default(NOT_STARTED)
+  outcome       String?                      // Final outcome/notes
+  completedAt   DateTime?  @map("completed_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("improvement_plans")
+}
+
+// ==================== COMPANY SETTINGS ====================
+
+/// Company-wide settings and global standards
+model CompanySettings {
+  id                    String  @id @default(cuid())
+  companyName           String  @default("Company") @map("company_name")
+  salaryDaySystem       Int     @default(22) @map("salary_day_system")
+  defaultVacationDays   Int     @default(21) @map("default_vacation_days")
+  workingHoursPerDay    Float   @default(8) @map("working_hours_per_day")
+  lateGraceMinutes      Int     @default(15) @map("late_grace_minutes")
+  overtimeMultiplier    Float   @default(1.5) @map("overtime_multiplier")
+  disciplineSteps       Json    @default("[{\"step\":1,\"name\":\"Verbal Warning\",\"deductionPct\":0,\"isTermination\":false},{\"step\":2,\"name\":\"Written Warning\",\"deductionPct\":5,\"isTermination\":false},{\"step\":3,\"name\":\"Final Warning\",\"deductionPct\":10,\"isTermination\":false},{\"step\":4,\"name\":\"Termination\",\"deductionPct\":0,\"isTermination\":true}]") @map("discipline_steps")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("company_settings")
+}
+
+// ==================== BREAK POLICY MODELS ====================
+
+/// Department break policy — defines rest schedule per section
+model DepartmentBreakPolicy {
+  id            String          @id @default(cuid())
+  departmentId  String          @unique @map("department_id")
+  mode          BreakPolicyMode @default(FIXED)
+  totalBreakMin Int             @default(60) @map("total_break_min")
+  isActive      Boolean         @default(true) @map("is_active")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  department  Department  @relation(fields: [departmentId], references: [id])
+  breakSlots  BreakSlot[]
+
+  @@map("department_break_policies")
+}
+
+/// Ordered break slot in the policy array
+model BreakSlot {
+  id          String    @id @default(cuid())
+  policyId    String    @map("policy_id")
+  name        String
+  type        BreakType @default(REST)
+  startTime   String    @map("start_time")
+  endTime     String    @map("end_time")
+  durationMin Int       @map("duration_min")
+  sortOrder   Int       @default(0) @map("sort_order")
+  isRequired  Boolean   @default(true) @map("is_required")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  policy DepartmentBreakPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([policyId])
+  @@map("break_slots")
+}
+
+// ==================== WORK SESSION MODELS ====================
+
+/// Daily work session per employee
+model WorkSession {
+  id            String            @id @default(cuid())
+  employeeId    String            @map("employee_id")
+  date          DateTime
+  clockIn       DateTime          @map("clock_in")
+  clockOut      DateTime?         @map("clock_out")
+  status        WorkSessionStatus @default(ACTIVE)
+  totalWorkMin  Int               @default(0) @map("total_work_min")
+  totalBreakMin Int               @default(0) @map("total_break_min")
+  isLate        Boolean           @default(false) @map("is_late")
+  lateMinutes   Int               @default(0) @map("late_minutes")
+  isOvertime    Boolean           @default(false) @map("is_overtime")
+  overtimeMin   Int               @default(0) @map("overtime_min")
+  ipAddress     String?           @map("ip_address")
+  notes         String?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  employee Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  breaks   SessionBreak[]
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([status])
+  @@map("work_sessions")
+}
+
+/// Break taken during a work session
+model SessionBreak {
+  id          String    @id @default(cuid())
+  sessionId   String    @map("session_id")
+  type        BreakType @default(REST)
+  slotName    String?   @map("slot_name")
+  sortOrder   Int       @default(0) @map("sort_order")
+  startedAt   DateTime  @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  durationMin Int?      @map("duration_min")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  session WorkSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("session_breaks")
+}
+
+// ==================== EMPLOYEE WARNING / DISCIPLINE ====================
+
+/// Employee warning (progressive discipline)
+model EmployeeWarning {
+  id            String        @id @default(cuid())
+  employeeId    String        @map("employee_id")
+  issuedById    String        @map("issued_by_id")
+  stepNumber    Int           @map("step_number")
+  stepName      String        @map("step_name")
+  reason        String
+  description   String?
+  deductionPct  Float         @default(0) @map("deduction_pct")
+  isTermination Boolean       @default(false) @map("is_termination")
+  status        WarningStatus @default(ACTIVE)
+  issuedAt      DateTime      @default(now()) @map("issued_at")
+  expiresAt     DateTime?     @map("expires_at")
+  appealNotes   String?       @map("appeal_notes")
+  payrollMonth  Int?          @map("payroll_month")
+  payrollYear   Int?          @map("payroll_year")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  issuedBy User     @relation("WarningIssuer", fields: [issuedById], references: [id])
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("employee_warnings")
+}
