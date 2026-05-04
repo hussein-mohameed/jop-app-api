@@ -18,6 +18,7 @@ function formatMinutes(min: number): string {
   if (h === 0) return `${m}m`;
   return `${h}h ${m}m`;
 }
+// test
 
 // ==================== STATUS INDICATOR ====================
 
@@ -122,11 +123,10 @@ function BreakProgress({
         return (
           <React.Fragment key={i}>
             {i > 0 && <div className="h-0.5 w-4 bg-muted flex-shrink-0" />}
-            <div className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium flex-shrink-0 transition-all ${
-              taken ? 'bg-success-100 text-success-700' :
-              isActive ? 'bg-warning-100 text-warning-700 ring-2 ring-warning-300' :
-              'bg-muted text-muted-foreground'
-            }`}>
+            <div className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium flex-shrink-0 transition-all ${taken ? 'bg-success-100 text-success-700' :
+                isActive ? 'bg-warning-100 text-warning-700 ring-2 ring-warning-300' :
+                  'bg-muted text-muted-foreground'
+              }`}>
               {taken ? (
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
               ) : isActive ? (
@@ -288,11 +288,10 @@ export default function EmployeeDashboardContent() {
                     <button
                       key={t}
                       onClick={() => setBreakType(t)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                        breakType === t
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${breakType === t
                           ? 'bg-primary-100 text-primary-700 ring-1 ring-primary-300'
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
+                        }`}
                     >
                       {t === 'REST' ? '☕' : t === 'LUNCH' ? '🍽' : t === 'PRAYER' ? '🕌' : '👤'} {t.charAt(0) + t.slice(1).toLowerCase()}
                     </button>
@@ -378,9 +377,8 @@ export default function EmployeeDashboardContent() {
           <div className="space-y-3">
             {session.breaks.map((b, i) => (
               <div key={b.id} className="flex items-center gap-4">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                  b.endedAt ? 'bg-success-100 text-success-700' : 'bg-warning-100 text-warning-700'
-                }`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${b.endedAt ? 'bg-success-100 text-success-700' : 'bg-warning-100 text-warning-700'
+                  }`}>
                   {i + 1}
                 </div>
                 <div className="flex-1">
