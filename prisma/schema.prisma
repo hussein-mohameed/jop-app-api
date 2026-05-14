@@ -241,6 +241,8 @@ model User {
   auditLogs             AuditLog[]
   reviewedApplications  JobApplication[]    @relation("ApplicationReviewer")
   issuedWarnings        EmployeeWarning[]   @relation("WarningIssuer")
+  setWorkSchedules      EmployeeWorkSchedule[] @relation("ScheduleSetBy")
+  changedCareerRecords  CareerRecord[]      @relation("CareerChangedBy")
 
   @@map("users")
 }
@@ -263,6 +265,7 @@ model Employee {
   terminationDate        DateTime?        @map("termination_date")
   managerId              String?          @map("manager_id")
   hasJobPostingPermission Boolean         @default(false) @map("has_job_posting_permission")
+  hasSchedulePermission  Boolean          @default(false) @map("has_schedule_permission")
   createdAt              DateTime         @default(now()) @map("created_at")
   updatedAt              DateTime         @updatedAt @map("updated_at")
 
@@ -284,6 +287,8 @@ model Employee {
   improvementPlans   ImprovementPlan[]
   workSessions       WorkSession[]
   warnings           EmployeeWarning[]
+  workSchedule       EmployeeWorkSchedule?
+  careerRecords      CareerRecord[]
 
   @@index([departmentId])
   @@index([managerId])
@@ -310,6 +315,7 @@ model Department {
   employees  Employee[]
   jobs       Job[]
   breakPolicy DepartmentBreakPolicy?
+  careerRecords CareerRecord[]
 
   @@index([managerId])
   @@map("departments")
@@ -815,6 +821,12 @@ model CompanySettings {
   lateGraceMinutes      Int     @default(15) @map("late_grace_minutes")
   overtimeMultiplier    Float   @default(1.5) @map("overtime_multiplier")
   disciplineSteps       Json    @default("[{\"step\":1,\"name\":\"Verbal Warning\",\"deductionPct\":0,\"isTermination\":false},{\"step\":2,\"name\":\"Written Warning\",\"deductionPct\":5,\"isTermination\":false},{\"step\":3,\"name\":\"Final Warning\",\"deductionPct\":10,\"isTermination\":false},{\"step\":4,\"name\":\"Termination\",\"deductionPct\":0,\"isTermination\":true}]") @map("discipline_steps")
+
+  // Work schedule defaults (Sat-Thu = [0,1,2,3,4,6], Friday off)
+  defaultWorkStartTime  String  @default("09:00") @map("default_work_start_time")
+  defaultWorkEndTime    String  @default("16:00") @map("default_work_end_time")
+  defaultWorkDays       Json    @default("[0,1,2,3,4,6]") @map("default_work_days")
+
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
@@ -934,4 +946,51 @@ model EmployeeWarning {
   @@index([employeeId])
   @@index([status])
   @@map("employee_warnings")
+}
+
+// ==================== WORK SCHEDULE ====================
+
+/// Custom work schedule per employee (overrides company defaults)
+model EmployeeWorkSchedule {
+  id            String   @id @default(cuid())
+  employeeId    String   @unique @map("employee_id")
+  workStartTime String   @map("work_start_time")   // HH:mm format
+  workEndTime   String   @map("work_end_time")     // HH:mm format
+  workDays      Json     @map("work_days")         // Array of day numbers [0=Sun..6=Sat]
+  setById       String   @map("set_by_id")         // Manager/Admin who set this
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  setBy    User     @relation("ScheduleSetBy", fields: [setById], references: [id])
+
+  @@map("employee_work_schedules")
+}
+
+// ==================== CAREER TRACKING ====================
+
+/// Career record — tracks every position/role change for an employee
+model CareerRecord {
+  id                 String    @id @default(cuid())
+  employeeId         String    @map("employee_id")
+  position           String                                   // Job title
+  departmentId       String    @map("department_id")
+  baseSalary         Float     @map("base_salary")
+  workingHoursPerDay Float     @default(8) @map("working_hours_per_day")
+  startDate          DateTime  @map("start_date")
+  endDate            DateTime? @map("end_date")
+  isActive           Boolean   @default(true) @map("is_active")
+  reason             String?                                  // Reason for change
+  changedById        String?   @map("changed_by_id")
+  notes              String?
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id])
+  changedBy  User?      @relation("CareerChangedBy", fields: [changedById], references: [id])
+
+  @@index([employeeId])
+  @@index([isActive])
+  @@map("career_records")
 }

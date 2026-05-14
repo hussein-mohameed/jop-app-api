@@ -45,6 +45,9 @@ export async function updateSettings(data: {
   lateGraceMinutes?: number;
   overtimeMultiplier?: number;
   disciplineSteps?: DisciplineStep[];
+  defaultWorkStartTime?: string;
+  defaultWorkEndTime?: string;
+  defaultWorkDays?: number[];
 }): Promise<ApiResponse<unknown>> {
   try {
     // Validate salaryDaySystem
@@ -75,6 +78,15 @@ export async function updateSettings(data: {
       // Last step should typically be termination, but not enforced
     }
 
+    // Validate work schedule times
+    if (data.defaultWorkStartTime && data.defaultWorkEndTime) {
+      const [startH, startM] = data.defaultWorkStartTime.split(':').map(Number);
+      const [endH, endM] = data.defaultWorkEndTime.split(':').map(Number);
+      if (endH * 60 + endM <= startH * 60 + startM) {
+        return { success: false, error: 'Work end time must be after start time' };
+      }
+    }
+
     const settings = await settingsRepo.updateSettings({
       ...data,
       disciplineSteps: data.disciplineSteps as unknown as object,
@@ -85,3 +97,4 @@ export async function updateSettings(data: {
     return { success: false, error: `Failed to update settings: ${String(error)}` };
   }
 }
+

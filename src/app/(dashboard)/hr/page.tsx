@@ -1,36 +1,31 @@
+/**
+ * @file HR Dashboard — server component with real data.
+ * Validates HR role, fetches company-wide data via server-only queries.
+ */
+
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/security/auth/session.security';
+import { getHRDashboardData } from '@/queries/dashboard.queries';
+import HRDashboardContent from '@/components/features/dashboard/HRDashboardContent';
 
 export const metadata: Metadata = {
-  title: 'HR Dashboard',
+  title: 'HR Dashboard | HR System',
+  description: 'Manage employees, payroll, recruitment, and company-wide HR operations.',
 };
 
-/**
- * HR dashboard — view for HR Staff and HR Manager.
- */
-export default function HRDashboardPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-foreground">HR Dashboard</h1>
-      <p className="mt-2 text-muted-foreground">
-        Manage employees, payroll, recruitment, and company-wide HR operations.
-      </p>
+export default async function HRDashboardPage() {
+  const session = await getSession();
+  if (!session) redirect('/login');
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Total Employees', value: '—' },
-          { label: 'Pending Requests', value: '—' },
-          { label: 'Payroll Status', value: '—' },
-          { label: 'Open Jobs', value: '—' },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
-          >
-            <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-            <p className="mt-2 text-3xl font-bold text-foreground">{card.value}</p>
-          </div>
-        ))}
-      </div>
+  const allowedRoles = ['HR_STAFF', 'HR_MANAGER'];
+  if (!allowedRoles.includes(session.role as string)) redirect('/employee');
+
+  const data = await getHRDashboardData();
+
+  return (
+    <div className="space-y-6">
+      <HRDashboardContent data={data} />
     </div>
   );
 }

@@ -26,6 +26,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.SUGGEST_BONUS,
     Permission.POST_JOB,
     Permission.VIEW_DEPT_REPORTS,
+    Permission.MANAGE_WORK_SCHEDULES,
+    Permission.VIEW_CAREER_HISTORY,
+    Permission.MANAGE_CAREER_RECORDS,
   ],
 
   [Role.HR_STAFF]: [
@@ -63,6 +66,9 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.APPROVE_JOB_POSTING,
     Permission.VIEW_ALL_LEAVES,
     Permission.VIEW_ALL_REPORTS,
+    Permission.VIEW_CAREER_HISTORY,
+    Permission.MANAGE_CAREER_RECORDS,
+    // MANAGE_WORK_SCHEDULES granted individually via hasSchedulePermission flag
   ],
 
   [Role.COMPANY_ADMIN]: [
@@ -84,6 +90,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_ALL_REPORTS,
     Permission.MANAGE_ROLES,
     Permission.VIEW_AUDIT_LOGS,
+    Permission.MANAGE_SETTINGS,
+    Permission.MANAGE_WORK_SCHEDULES,
+    Permission.VIEW_CAREER_HISTORY,
+    Permission.MANAGE_CAREER_RECORDS,
   ],
 } as const;
 

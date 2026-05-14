@@ -5,7 +5,8 @@
  * Business rules:
  * - One active session per employee per day
  * - Breaks follow department policy (FIXED/FLEXIBLE/NONE)
- * - Late detection based on shift start + grace period
+ * - Clock-in validates working day and hours from employee/company schedule
+ * - Late detection based on schedule start time + grace period
  * - Overtime detection based on working hours per day
  */
 
@@ -13,6 +14,7 @@ import 'server-only';
 import * as sessionRepo from '@/repositories/session.repository';
 import * as breakPolicyRepo from '@/repositories/breakPolicy.repository';
 import * as settingsRepo from '@/repositories/companySettings.repository';
+import * as workScheduleService from '@/services/schedules/workSchedule.service';
 import prisma from '@/lib/prisma';
 import type { ApiResponse } from '@/types/common.types';
 import type { BreakType } from '@prisma/client';
@@ -70,27 +72,31 @@ export async function clockIn(
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
 
-    // Check for late arrival
+    // ============ WORK SCHEDULE VALIDATION ============
+    // Validate working day and hours using employee/company schedule
+    const scheduleCheck = await workScheduleService.validateWorkingTime(employee.id, now);
+
+    if (!scheduleCheck.allowed) {
+      return { success: false, error: scheduleCheck.message };
+    }
+
+    // ============ LATE DETECTION ============
+    // Use schedule-based late detection with grace period from company settings
     const settings = await settingsRepo.getSettings();
-    const shiftAssignment = await prisma.shiftAssignment.findFirst({
-      where: { employeeId: employee.id, isActive: true },
-      include: { shift: true },
-    });
+    const schedule = await workScheduleService.getEffectiveSchedule(employee.id);
+
+    const [startH, startM] = schedule.workStartTime.split(':').map(Number);
+    const shiftStart = new Date(today);
+    shiftStart.setHours(startH, startM, 0, 0);
+
+    const graceEnd = new Date(shiftStart.getTime() + settings.lateGraceMinutes * 60_000);
 
     let isLate = false;
     let lateMinutes = 0;
 
-    if (shiftAssignment?.shift) {
-      const [shiftH, shiftM] = shiftAssignment.shift.startTime.split(':').map(Number);
-      const shiftStart = new Date(today);
-      shiftStart.setHours(shiftH, shiftM, 0, 0);
-
-      const graceEnd = new Date(shiftStart.getTime() + settings.lateGraceMinutes * 60_000);
-
-      if (now > graceEnd) {
-        isLate = true;
-        lateMinutes = Math.round((now.getTime() - shiftStart.getTime()) / 60_000);
-      }
+    if (now > graceEnd) {
+      isLate = true;
+      lateMinutes = Math.round((now.getTime() - shiftStart.getTime()) / 60_000);
     }
 
     const session = await sessionRepo.createSession({
@@ -210,7 +216,7 @@ export async function startBreak(
     const newBreak = await sessionRepo.createBreak({
       sessionId: session.id,
       type: breakType,
-      slotName: slotName || null,
+      slotName: slotName || undefined,
       sortOrder: nextOrder,
       startedAt: new Date(),
     });

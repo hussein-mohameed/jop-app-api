@@ -15,6 +15,9 @@ const settingsSelect = {
   lateGraceMinutes: true,
   overtimeMultiplier: true,
   disciplineSteps: true,
+  defaultWorkStartTime: true,
+  defaultWorkEndTime: true,
+  defaultWorkDays: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -48,6 +51,9 @@ export async function updateSettings(data: {
   lateGraceMinutes?: number;
   overtimeMultiplier?: number;
   disciplineSteps?: object;
+  defaultWorkStartTime?: string;
+  defaultWorkEndTime?: string;
+  defaultWorkDays?: number[];
 }) {
   const existing = await getSettings();
   return prisma.companySettings.update({

@@ -72,7 +72,7 @@ export async function handleCreateDepartment(request: Request): Promise<Response
     if (guard) return guard;
 
     const body = await request.json();
-    const sanitized = sanitizeInput(body);
+    const sanitized = sanitizeObject(body);
     const result = await createDepartment(sanitized);
 
     return Response.json(result, { status: result.success ? 201 : 400 });

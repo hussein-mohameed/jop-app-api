@@ -63,7 +63,7 @@ export default function AdminPayrollPage() {
     {
       key: 'status',
       header: 'Status',
-      renderCell: (item) => <StatusBadge status={item.status} label={getStatusLabel(item.status)} />
+      renderCell: (item) => <StatusBadge status={item.status} />
     }
   ];
 
@@ -82,8 +82,8 @@ export default function AdminPayrollPage() {
       key: 'year',
       label: 'All Years',
       options: [
-        { value: 2026, label: '2026' },
-        { value: 2025, label: '2025' }
+        { value: '2026', label: '2026' },
+        { value: '2025', label: '2025' }
       ]
     }
   ];
@@ -107,7 +107,7 @@ export default function AdminPayrollPage() {
             searchPlaceholder="Search by ID..."
             onSearchChange={(search) => setQuery((prev) => ({ ...prev, search }))}
             filters={filters}
-            activeFilters={{ status: query.status || '', year: query.year || '' }}
+            activeFilters={{ status: query.status || '', year: String(query.year || '') }}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onFilterChange={(key, value) => setQuery((prev) => ({ ...prev, [key]: value as any }))}
             onClearFilters={() => setQuery({ search: '', status: '', year: '' })}
@@ -142,7 +142,7 @@ export default function AdminPayrollPage() {
                   </svg>
                 ),
                 onClick: (item) => markAsPaid(item.id),
-                variant: 'success'
+                variant: 'primary'
               }
             ]}
           />

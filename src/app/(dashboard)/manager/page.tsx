@@ -1,36 +1,30 @@
+/**
+ * @file Manager Dashboard — server component with real data.
+ * Validates role, fetches team data via server-only queries.
+ */
+
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/security/auth/session.security';
+import { getManagerDashboardData } from '@/queries/dashboard.queries';
+import ManagerDashboardContent from '@/components/features/dashboard/ManagerDashboardContent';
 
 export const metadata: Metadata = {
-  title: 'Manager Dashboard',
+  title: 'Manager Dashboard | HR System',
+  description: 'Manage your team, track attendance, and review department performance.',
 };
 
-/**
- * Manager dashboard — view for department managers.
- */
-export default function ManagerDashboardPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-foreground">Manager Dashboard</h1>
-      <p className="mt-2 text-muted-foreground">
-        Manage your team, approve leave requests, and track department performance.
-      </p>
+export default async function ManagerDashboardPage() {
+  const session = await getSession();
+  if (!session) redirect('/login');
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Team Members', value: '—' },
-          { label: 'Pending Approvals', value: '—' },
-          { label: 'Open Positions', value: '—' },
-          { label: 'Dept. Budget', value: '—' },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-xl border border-border bg-card p-6 shadow-sm transition-shadow hover:shadow-md"
-          >
-            <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-            <p className="mt-2 text-3xl font-bold text-foreground">{card.value}</p>
-          </div>
-        ))}
-      </div>
+  if (session.role !== 'MANAGER') redirect('/employee');
+
+  const data = await getManagerDashboardData(session.sub);
+
+  return (
+    <div className="space-y-6">
+      <ManagerDashboardContent data={data} />
     </div>
   );
 }

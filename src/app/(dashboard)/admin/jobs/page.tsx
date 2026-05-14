@@ -85,7 +85,7 @@ export default function AdminJobsPage() {
     {
       key: 'status',
       header: 'Status',
-      renderCell: (item) => <StatusBadge status={item.status} label={getStatusLabel(item.status)} />
+      renderCell: (item) => <StatusBadge status={item.status} />
     }
   ];
 

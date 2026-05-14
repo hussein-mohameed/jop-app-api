@@ -14,6 +14,7 @@ import 'server-only';
 import * as employeeRepo from '@/repositories/employee.repository';
 import * as departmentRepo from '@/repositories/department.repository';
 import * as userRepo from '@/repositories/user.repository';
+import * as careerRecordService from '@/services/career/careerRecord.service';
 import { hashPassword } from '@/security/encryption/password';
 import { generateEmployeeId, generateSecurePassword } from '@/lib/utils';
 import type { ApiResponse, PaginatedResponse } from '@/types/common.types';
@@ -143,6 +144,18 @@ export async function createEmployee(
       employeeId,
     });
 
+    // Initialize first career record (non-blocking)
+    const empRecord = employee as { id: string };
+    await careerRecordService.initializeCareerRecord(
+      empRecord.id,
+      {
+        position: data.position,
+        departmentId: data.departmentId,
+        baseSalary: 0, // Will be set when salary is assigned
+        hireDate: data.hireDate,
+      }
+    );
+
     return {
       success: true,
       data: { employee, generatedPassword },
@@ -180,6 +193,28 @@ export async function updateEmployee(
     }
 
     const employee = await employeeRepo.update(id, data as Parameters<typeof employeeRepo.update>[1]);
+
+    // If position changed, create a new career record
+    if (data.position && data.position !== existing.position) {
+      // Get current salary for the career record
+      const currentSalary = await import('@/lib/prisma').then(m =>
+        m.default.salary.findFirst({
+          where: { employeeId: id, isActive: true },
+          select: { baseSalary: true },
+        })
+      );
+
+      await careerRecordService.createCareerRecord(
+        id,
+        {
+          position: data.position,
+          departmentId: data.departmentId || existing.departmentId,
+          baseSalary: currentSalary?.baseSalary ?? 0,
+          workingHoursPerDay: 8,
+          reason: `Position changed from ${existing.position} to ${data.position}`,
+        }
+      );
+    }
 
     return {
       success: true,

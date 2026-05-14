@@ -21,6 +21,11 @@ export const updateSettingsSchema = z.object({
   lateGraceMinutes: z.number().int().min(0).max(120).optional(),
   overtimeMultiplier: z.number().min(1).max(5).optional(),
   disciplineSteps: z.array(disciplineStepSchema).min(2).optional(),
+  // Work schedule defaults
+  defaultWorkStartTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format must be HH:mm').optional(),
+  defaultWorkEndTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format must be HH:mm').optional(),
+  defaultWorkDays: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional(),
 });
 
 export type UpdateSettingsFormData = z.infer<typeof updateSettingsSchema>;
+

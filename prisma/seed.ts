@@ -1,6 +1,6 @@
 /**
  * @file Database seed script.
- * Seeds default departments, leave types, and admin user.
+ * Seeds default departments, leave types, admin user, and company settings.
  *
  * Run: npx prisma db seed
  */
@@ -16,7 +16,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Seeding database...');
 
   // --- Departments ---
   const departments = [
@@ -35,7 +35,7 @@ async function main() {
       create: dept,
     });
   }
-  console.log(`  ✅ ${departments.length} departments seeded`);
+  console.log(`  ${departments.length} departments seeded`);
 
   // --- Leave Types ---
   const leaveTypes = [
@@ -54,7 +54,7 @@ async function main() {
       create: lt,
     });
   }
-  console.log(`  ✅ ${leaveTypes.length} leave types seeded`);
+  console.log(`  ${leaveTypes.length} leave types seeded`);
 
   // --- Admin User ---
   const adminEmail = 'admin@company.com';
@@ -71,7 +71,7 @@ async function main() {
       role: 'COMPANY_ADMIN',
     },
   });
-  console.log(`  ✅ Admin user seeded: ${adminEmail}`);
+  console.log(`  Admin user seeded: ${adminEmail}`);
 
   // --- HR Manager ---
   const hrEmail = 'hr@company.com';
@@ -107,10 +107,24 @@ async function main() {
       },
     });
   }
-  console.log(`  ✅ HR Manager seeded: ${hrEmail}`);
+  console.log(`  HR Manager seeded: ${hrEmail}`);
 
-  console.log('\\n🎉 Database seeding completed!');
-  console.log('\\n📋 Default credentials:');
+  // --- Company Settings (work schedule defaults) ---
+  const existingSettings = await prisma.companySettings.findFirst();
+  if (!existingSettings) {
+    await prisma.companySettings.create({
+      data: {
+        companyName: 'Company',
+        defaultWorkStartTime: '09:00',
+        defaultWorkEndTime: '16:00',
+        defaultWorkDays: [0, 1, 2, 3, 4, 6], // Sat-Thu (Friday off)
+      },
+    });
+    console.log('  Company settings seeded (Sat-Thu 9AM-4PM, Fri off)');
+  }
+
+  console.log('Database seeding completed!');
+  console.log('Default credentials:');
   console.log('   Admin: admin@company.com / Admin@123');
   console.log('   HR:    hr@company.com / HRManager@123');
 }
@@ -120,7 +134,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
-    console.error('❌ Seed error:', e);
+    console.error('Seed error:', e);
     await prisma.$disconnect();
     process.exit(1);
   });
