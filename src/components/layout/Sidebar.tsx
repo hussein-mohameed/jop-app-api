@@ -141,12 +141,15 @@ const navItems: NavItem[] = [
   },
 ];
 
+import { useTranslation } from 'react-i18next';
+
 /**
  * Sidebar component — renders role-filtered navigation.
  * UI component only — receives session data via props.
  */
 export default function Sidebar({ session, collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   // Determine base path based on role
   const basePath = `/${session.role === 'HR_STAFF' || session.role === 'HR_MANAGER' ? 'hr' : session.role === 'COMPANY_ADMIN' ? 'admin' : session.role === 'MANAGER' ? 'manager' : 'employee'}`;
@@ -202,7 +205,7 @@ export default function Sidebar({ session, collapsed, onToggle }: SidebarProps) 
                   title={collapsed ? item.label : undefined}
                 >
                   {item.icon}
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && <span>{t(`nav.${item.label.toLowerCase()}`)}</span>}
                 </Link>
               </li>
             );
