@@ -5,7 +5,7 @@
 
 import type { JwtPayload } from '@/types/auth.types';
 import { Role, Permission } from '@/types/auth.types';
-import { hasRole } from './role.guard';
+import { hasRole, hasAnyRole } from './role.guard';
 import { hasPermission } from './permission.guard';
 
 /**
@@ -82,5 +82,21 @@ export function canPostJob(
  * Can the user manage departments?
  */
 export function canManageDepartments(session: JwtPayload): boolean {
+  return session.role === Role.COMPANY_ADMIN;
+}
+
+/**
+ * Can the user send announcements?
+ * MANAGER, HR_MANAGER, and COMPANY_ADMIN can send announcements.
+ */
+export function canSendAnnouncement(session: JwtPayload): boolean {
+  return hasAnyRole(session.role, [Role.MANAGER, Role.HR_MANAGER, Role.COMPANY_ADMIN]);
+}
+
+/**
+ * Can the user send announcements to ALL employees?
+ * Only COMPANY_ADMIN can target all employees.
+ */
+export function canSendToAllEmployees(session: JwtPayload): boolean {
   return session.role === Role.COMPANY_ADMIN;
 }

@@ -16,6 +16,21 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
+/** Derive the base dashboard path from the user's role */
+function getBasePath(role: Role): string {
+  switch (role) {
+    case 'HR_STAFF':
+    case 'HR_MANAGER':
+      return '/hr';
+    case 'COMPANY_ADMIN':
+      return '/admin';
+    case 'MANAGER':
+      return '/manager';
+    default:
+      return '/employee';
+  }
+}
+
 /**
  * Client-side dashboard shell — manages sidebar collapse state.
  * Renders Sidebar + Header + content area.
@@ -26,6 +41,7 @@ export default function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const basePath = getBasePath(session.role);
 
   return (
     <I18nProvider>
@@ -44,6 +60,7 @@ export default function DashboardShell({
         >
           <Header
             email={session.email}
+            basePath={basePath}
           />
 
           <main className="p-6">
@@ -54,4 +71,3 @@ export default function DashboardShell({
     </I18nProvider>
   );
 }
-

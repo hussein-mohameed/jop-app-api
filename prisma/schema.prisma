@@ -96,6 +96,17 @@ enum NotificationType {
   ERROR
 }
 
+enum AnnouncementPriority {
+  NORMAL
+  CRITICAL
+}
+
+enum AnnouncementTargetType {
+  ALL_EMPLOYEES
+  DEPARTMENT
+  SPECIFIC_EMPLOYEES
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -243,6 +254,8 @@ model User {
   issuedWarnings        EmployeeWarning[]   @relation("WarningIssuer")
   setWorkSchedules      EmployeeWorkSchedule[] @relation("ScheduleSetBy")
   changedCareerRecords  CareerRecord[]      @relation("CareerChangedBy")
+  sentAnnouncements     Announcement[]      @relation("AnnouncementSender")
+  receivedAnnouncements AnnouncementRecipient[] @relation("AnnouncementRecipients")
 
   @@map("users")
 }
@@ -993,4 +1006,57 @@ model CareerRecord {
   @@index([employeeId])
   @@index([isActive])
   @@map("career_records")
+}
+
+// ==================== ANNOUNCEMENT / NOTIFICATION SYSTEM ====================
+
+/// Manual announcement sent by managers/admins to targeted recipients
+model Announcement {
+  id          String                @id @default(cuid())
+  senderId    String                @map("sender_id")
+  title       String
+  content     String
+  priority    AnnouncementPriority  @default(NORMAL)
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  // Relations
+  sender      User                  @relation("AnnouncementSender", fields: [senderId], references: [id])
+  targets     AnnouncementTarget[]
+  recipients  AnnouncementRecipient[]
+
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("announcements")
+}
+
+/// Targeting rule for an announcement (supports combining multiple target types)
+model AnnouncementTarget {
+  id             String                  @id @default(cuid())
+  announcementId String                  @map("announcement_id")
+  targetType     AnnouncementTargetType  @map("target_type")
+  departmentId   String?                 @map("department_id")
+  employeeId     String?                 @map("employee_id")
+
+  // Relations
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@map("announcement_targets")
+}
+
+/// Materialized recipient record — one row per user per announcement for read tracking
+model AnnouncementRecipient {
+  id             String       @id @default(cuid())
+  announcementId String       @map("announcement_id")
+  userId         String       @map("user_id")
+  isRead         Boolean      @default(false) @map("is_read")
+  readAt         DateTime?    @map("read_at")
+
+  // Relations
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation("AnnouncementRecipients", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId, isRead])
+  @@map("announcement_recipients")
 }

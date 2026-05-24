@@ -2,21 +2,24 @@
 
 import { useRouter } from 'next/navigation';
 import { ROUTES } from '@/lib/constants';
+import NotificationDropdown from '@/components/features/announcements/NotificationDropdown';
 
 interface HeaderProps {
   email: string;
   firstName?: string;
   lastName?: string;
+  basePath: string;
 }
 
 /**
- * Header component with search, notifications, and user menu.
+ * Header component with search, notifications dropdown, and user menu.
  * UI component only — no business logic.
  */
 export default function Header({
   email,
   firstName,
   lastName,
+  basePath,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -55,18 +58,8 @@ export default function Header({
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        {/* Notifications bell */}
-        <button
-          className="relative rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          aria-label="View notifications"
-          id="notification-bell"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-          </svg>
-          {/* Notification badge */}
-          <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-danger-500 ring-2 ring-card" />
-        </button>
+        {/* Notifications dropdown */}
+        <NotificationDropdown basePath={basePath} />
 
         {/* User menu */}
         <button

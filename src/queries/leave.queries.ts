@@ -27,6 +27,8 @@ export interface EmployeeLeaveBalance {
   color: string;
 }
 
+
+
 /** Get all leave requests for an employee */
 export async function getEmployeeLeaves(employeeId: string): Promise<LeaveHistoryRecord[]> {
   const leaves = await prisma.leave.findMany({

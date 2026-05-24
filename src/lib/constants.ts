@@ -63,6 +63,14 @@ export const ROUTES = {
     EMPLOYEES: '/api/employees',
     DEPARTMENTS: '/api/departments',
     DASHBOARD: '/api/dashboard',
+    ANNOUNCEMENTS: {
+      BASE: '/api/announcements',
+      SENT: '/api/announcements/sent',
+      UNREAD_STATS: '/api/announcements/unread-stats',
+      RECENT: '/api/announcements/recent',
+      READ_ALL: '/api/announcements/read-all',
+      READ: (id: string) => `/api/announcements/${id}/read`,
+    },
   },
 } as const;
 
